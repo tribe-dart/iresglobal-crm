@@ -109,7 +109,7 @@ jobs:
 
       - name: Build Next.js Static Export
         env:
-          NEXT_PUBLIC_API_URL: http://52.18.201.50:5002
+          NEXT_PUBLIC_API_URL: https://api-crm.iresglobal.com
           NEXT_PUBLIC_ATTACHMENTS_BUCKET: ires-crm-attachments-65ppow
           NEXT_PUBLIC_AWS_REGION: eu-west-1
         run: |
