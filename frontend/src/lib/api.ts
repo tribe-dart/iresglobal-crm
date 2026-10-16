@@ -1,4 +1,11 @@
-import { Contact, Quote, DiscoveryQuestionnaire, StageType } from "@/types";
+import {
+  Contact,
+  Quote,
+  DiscoveryQuestionnaire,
+  StageType,
+  CreateQuoteInput,
+  DiscoveryResponse,
+} from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://52.18.201.50:5002";
 
@@ -63,7 +70,7 @@ export async function fetchQuotes(contactId?: string): Promise<Quote[]> {
   return data.quotes || [];
 }
 
-export async function createQuote(quoteData: any): Promise<Quote> {
+export async function createQuote(quoteData: CreateQuoteInput): Promise<Quote> {
   const res = await fetch(`${API_BASE}/api/quotes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -74,7 +81,7 @@ export async function createQuote(quoteData: any): Promise<Quote> {
   return data.quote;
 }
 
-export async function submitDiscovery(formData: any): Promise<any> {
+export async function submitDiscovery(formData: Partial<DiscoveryQuestionnaire>): Promise<DiscoveryResponse> {
   const res = await fetch(`${API_BASE}/api/discovery/submit`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

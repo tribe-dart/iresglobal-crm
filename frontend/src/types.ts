@@ -52,3 +52,25 @@ export interface DiscoveryQuestionnaire {
   submittedAt: string;
   contactId?: string;
 }
+
+export interface CreateQuoteInput {
+  clientName?: string;
+  email?: string;
+  phone?: string;
+  brand: "ires";
+  projectType: string;
+  floorAreaSqM: number;
+  qualityTier?: "standard" | "premium" | "luxury";
+  currency?: string;
+  floorPlanUrl?: string;
+  specificationDetails?: string;
+  contactId?: string;
+}
+
+export interface DiscoveryResponse {
+  success: boolean;
+  message?: string;
+  questionnaire?: DiscoveryQuestionnaire;
+  contact?: Contact;
+  error?: string;
+}

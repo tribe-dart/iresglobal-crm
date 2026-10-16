@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   Users,
   PieChart,
@@ -19,12 +20,7 @@ import {
   Moon,
   Layers,
   Sparkles,
-  TreePine,
-  ShieldCheck,
-  Building2,
-  DollarSign,
   Calendar,
-  MapPin,
 } from "lucide-react";
 import { Contact, Quote, StageType } from "@/types";
 import {
@@ -32,7 +28,6 @@ import {
   createContact,
   updateContactStage,
   addContactComment,
-  deleteContact,
   fetchQuotes,
   createQuote,
   submitDiscovery,
@@ -276,7 +271,7 @@ export default function CRMApp() {
           <div className="px-2">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-lg bg-(--color-bg) border border-(--color-line) flex items-center justify-center p-2 shadow-xs shrink-0">
-                <img src="/Ires-icon.png" alt="Ires Global Icon" className="w-8 h-8 object-contain" />
+                <Image src="/Ires-icon.png" alt="Ires Global Icon" width={32} height={32} className="w-8 h-8 object-contain" />
               </div>
               <div>
                 <h1 className="font-extrabold tracking-tight text-(--color-text) text-base">Ires Global</h1>
@@ -812,19 +807,19 @@ export default function CRMApp() {
                     <div className="grid grid-cols-3 gap-3">
                       {[
                         {
-                          id: "standard",
+                          id: "standard" as const,
                           name: "CSEB Earth Villa",
                           rate: 650,
                           desc: "Compressed Stabilized Earth Blocks, natural lime render",
                         },
                         {
-                          id: "premium",
+                          id: "premium" as const,
                           name: "Monolithic Rammed Earth",
                           rate: 950,
                           desc: "Exposed stratified earth walls, natural mineral pigments",
                         },
                         {
-                          id: "luxury",
+                          id: "luxury" as const,
                           name: "Biophilic Earth Sanctuary",
                           rate: 1400,
                           desc: "Ultra-low carbon, 450mm thermal mass, timber canopy",
@@ -832,7 +827,7 @@ export default function CRMApp() {
                       ].map((tier) => (
                         <div
                           key={tier.id}
-                          onClick={() => setCalcData({ ...calcData, qualityTier: tier.id as any })}
+                          onClick={() => setCalcData({ ...calcData, qualityTier: tier.id })}
                           className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
                             calcData.qualityTier === tier.id
                               ? "border-(--color-accent) bg-(--color-accent)/10 shadow-xs"
@@ -949,7 +944,7 @@ export default function CRMApp() {
             <div className="max-w-2xl mx-auto bg-(--color-surface) border border-(--color-line) rounded-lg p-8 shadow-sm">
               <div className="text-center mb-8 pb-4 border-b border-(--color-line)">
                 <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-(--color-bg) border border-(--color-line) flex items-center justify-center p-2.5 shadow-xs">
-                  <img src="/Ires-icon.png" alt="Ires Logo" className="w-9 h-9 object-contain" />
+                  <Image src="/Ires-icon.png" alt="Ires Logo" width={36} height={36} className="w-9 h-9 object-contain" />
                 </div>
                 <h3 className="font-extrabold text-xl text-(--color-text)">
                   Architectural Discovery Intake
