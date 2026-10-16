@@ -1,0 +1,121 @@
+name: Deploy Ires Global CRM
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - "backend/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  detect-changes:
+    name: Detect Changed Paths
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for file changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+  deploy-backend:
+    name: Deploy Backend to EC2
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies & Build
+        run: |
+          cd backend
+          npm ci
+          npm run build
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy build to EC2
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "mkdir -p ~/ires-crm-backend"
+          scp -i ~/.ssh/id_rsa backend/package.json backend/package-lock.json ubuntu@${{ secrets.EC2_HOST }}:~/ires-crm-backend/
+          scp -i ~/.ssh/id_rsa -r backend/dist ubuntu@${{ secrets.EC2_HOST }}:~/ires-crm-backend/
+
+      - name: Restart PM2 Service on EC2
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "
+            cd ~/ires-crm-backend && \
+            npm install --omit=dev && \
+            pm2 restart ires-crm-backend || pm2 start dist/index.js --name ires-crm-backend && \
+            pm2 save
+          "
+
+  deploy-frontend:
+    name: Deploy Frontend to S3 (crm.iresglobal.com)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'eu-west-1' }}
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build Next.js Static Export
+        env:
+          NEXT_PUBLIC_API_URL: http://52.18.201.50:5002
+          NEXT_PUBLIC_ATTACHMENTS_BUCKET: ires-crm-attachments-65ppow
+          NEXT_PUBLIC_AWS_REGION: eu-west-1
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Sync to S3 website bucket
+        run: |
+          aws s3 sync frontend/out s3://crm.iresglobal.com --delete
