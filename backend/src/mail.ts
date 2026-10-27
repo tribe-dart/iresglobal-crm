@@ -13,11 +13,11 @@ async function sendEmail(input: {
   subject: string;
   text: string;
   replyTo?: string;
-}): Promise<void> {
+}): Promise<boolean> {
   const token = process.env.RESEND_API_KEY || "";
   if (!token) {
     console.warn("mail not configured");
-    return;
+    return false;
   }
 
   const response = await fetch("https://api.resend.com/emails", {
@@ -37,7 +37,13 @@ async function sendEmail(input: {
 
   if (!response.ok) {
     console.error("mail", response.status);
+    return false;
   }
+  return true;
+}
+
+export function sendAccountEmail(to: string, subject: string, text: string): Promise<boolean> {
+  return sendEmail({ to, subject, text });
 }
 
 export async function notifyNewLead(contact: {

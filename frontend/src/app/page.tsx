@@ -33,6 +33,10 @@ import {
   submitDiscovery,
   uploadAttachment,
   getExportCsvUrl,
+  fetchMe,
+  loginAccount,
+  logoutAccount,
+  type Account,
 } from "@/lib/api";
 
 const STAGES: StageType[] = ["15%", "50%", "75%", "100%"];
@@ -46,6 +50,12 @@ const STAGE_LABELS: Record<StageType, { label: string; desc: string }> = {
 
 export default function CRMApp() {
   const [isDark, setIsDark] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [account, setAccount] = useState<Account | null>(null);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
   const [activeTab, setActiveTab] = useState<"pipeline" | "contacts" | "quotes" | "discovery">("pipeline");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -126,19 +136,21 @@ export default function CRMApp() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([fetchContacts("ires"), fetchQuotes()])
-      .then(([cData, qData]) => {
+    fetchMe()
+      .then(async (user) => {
+        if (!active) return;
+        setAccount(user);
+        if (!user) return;
+        const [cData, qData] = await Promise.all([fetchContacts("ires"), fetchQuotes()]);
         if (!active) return;
         setContacts(cData);
         setQuotes(qData);
-        setSelectedContact((prev) => {
-          if (!prev) return null;
-          return cData.find((c) => c.id === prev.id) || prev;
-        });
       })
       .catch((err) => console.error("Initial load error:", err))
       .finally(() => {
-        if (active) setLoading(false);
+        if (!active) return;
+        setAuthReady(true);
+        setLoading(false);
       });
 
     return () => {
@@ -262,6 +274,74 @@ export default function CRMApp() {
 
   const getRate = (tier: string) => (tier === "standard" ? 650 : tier === "premium" ? 950 : 1400);
 
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoginError("");
+    setLoginBusy(true);
+    try {
+      const user = await loginAccount(loginEmail, loginPassword);
+      setAccount(user);
+      setLoading(true);
+      await loadData(true);
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : "Could not sign in.");
+    } finally {
+      setLoginBusy(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logoutAccount();
+    setAccount(null);
+    setContacts([]);
+    setQuotes([]);
+    setSelectedContact(null);
+  };
+
+  if (!authReady) {
+    return <div className="min-h-screen grid place-items-center text-sm text-(--color-muted)">Checking your account…</div>;
+  }
+
+  if (!account) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-(--color-bg) px-4">
+        <form onSubmit={handleLogin} className="w-full max-w-sm space-y-4 rounded-lg border border-(--color-line) bg-(--color-surface) p-6 shadow-sm">
+          <div>
+            <h1 className="text-lg font-extrabold text-(--color-text)">Sign in to IRES</h1>
+            <p className="mt-1 text-xs text-(--color-muted)">Use the same account you created on iresglobal.com.</p>
+          </div>
+          <input
+            type="email"
+            required
+            value={loginEmail}
+            onChange={(e) => setLoginEmail(e.target.value)}
+            placeholder="Email"
+            className="w-full rounded border border-(--color-line) bg-(--color-bg) px-3 py-2 text-sm"
+          />
+          <input
+            type="password"
+            required
+            value={loginPassword}
+            onChange={(e) => setLoginPassword(e.target.value)}
+            placeholder="Password"
+            className="w-full rounded border border-(--color-line) bg-(--color-bg) px-3 py-2 text-sm"
+          />
+          {loginError && <p className="text-xs text-red-700">{loginError}</p>}
+          <button
+            type="submit"
+            disabled={loginBusy}
+            className="w-full rounded bg-(--color-accent) px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {loginBusy ? "Signing in…" : "Sign in"}
+          </button>
+          <a href="https://iresglobal.com/account.html" className="block text-center text-xs text-(--color-accent) hover:underline">
+            Create an account
+          </a>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-(--color-bg) text-(--color-text) transition-colors duration-200">
       {/* SIDEBAR */}
@@ -352,7 +432,13 @@ export default function CRMApp() {
         {/* Bottom Actions */}
         <div className="space-y-3 pt-4 border-t border-(--color-line)">
           <div className="flex items-center justify-between px-1">
-            <span className="text-xs text-(--color-muted) font-medium">Theme Mode</span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-xs text-(--color-muted) font-medium hover:text-(--color-accent)"
+            >
+              Sign out
+            </button>
             <button
               onClick={() => setIsDark(!isDark)}
               className="p-1.5 rounded bg-(--color-bg) border border-(--color-line) hover:border-(--color-accent) transition-colors text-(--color-text)"

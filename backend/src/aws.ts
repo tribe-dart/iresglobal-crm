@@ -29,6 +29,7 @@ export const TABLES = {
   CONTACTS: process.env.CONTACTS_TABLE || "ires_crm_contacts",
   QUOTES: process.env.QUOTES_TABLE || "ires_crm_quotes",
   QUESTIONNAIRES: process.env.QUESTIONNAIRES_TABLE || "ires_crm_questionnaires",
+  USERS: process.env.USERS_TABLE || "ires_users",
 };
 
 export const BUCKETS = {

@@ -16,14 +16,32 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { docClient, s3Client, TABLES, BUCKETS } from "./aws";
 import { Contact, Quote, DiscoveryQuestionnaire, StageType } from "./types";
 import { notifyNewLead, notifyQuote } from "./mail";
+import { registerAuth, requireAccount } from "./auth";
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5001;
 
-app.use(cors());
+const allowedOrigins = new Set([
+  "https://iresglobal.com",
+  "https://www.iresglobal.com",
+  "https://crm.iresglobal.com",
+]);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(null, false);
+  },
+  credentials: true,
+}));
 app.use(express.json());
+registerAuth(app);
+app.use(requireAccount);
 
 const upload = multer({
   storage: multer.memoryStorage(),

@@ -70,16 +70,17 @@ jobs:
           scp -i ~/.ssh/id_rsa backend/package.json backend/package-lock.json ubuntu@${{ secrets.EC2_HOST }}:~/ires-crm-backend/
           scp -i ~/.ssh/id_rsa -r backend/dist ubuntu@${{ secrets.EC2_HOST }}:~/ires-crm-backend/
 
-      - name: Set Resend key on EC2
+      - name: Set server secrets on EC2
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
         run: |
-          if [ -z "$RESEND_API_KEY" ]; then
-            echo "RESEND_API_KEY secret is not set"
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$AUTH_SECRET" ]; then
+            echo "RESEND_API_KEY or AUTH_SECRET secret is not set"
             exit 1
           fi
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "touch ~/ires-crm-backend/.env && grep -v '^RESEND_API_KEY=' ~/ires-crm-backend/.env > ~/ires-crm-backend/.env.mail || true"
-          printf 'RESEND_API_KEY=%s\n' "$RESEND_API_KEY" | ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "cat >> ~/ires-crm-backend/.env.mail && mv ~/ires-crm-backend/.env.mail ~/ires-crm-backend/.env"
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "touch ~/ires-crm-backend/.env && grep -v -e '^RESEND_API_KEY=' -e '^AUTH_SECRET=' ~/ires-crm-backend/.env > ~/ires-crm-backend/.env.mail || true"
+          printf 'RESEND_API_KEY=%s\nAUTH_SECRET=%s\n' "$RESEND_API_KEY" "$AUTH_SECRET" | ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "cat >> ~/ires-crm-backend/.env.mail && mv ~/ires-crm-backend/.env.mail ~/ires-crm-backend/.env"
 
       - name: Restart PM2 Service on EC2
         run: |
@@ -129,4 +130,10 @@ jobs:
 
       - name: Sync to S3 website bucket
         run: |
-          aws s3 sync frontend/out s3://crm.iresglobal.com --delete
+          aws s3 sync frontend/out s3://crm.iresglobal.com --delete \
+            --exclude "*.html" \
+            --cache-control "public, max-age=31536000, immutable"
+          aws s3 sync frontend/out s3://crm.iresglobal.com \
+            --exclude "*" \
+            --include "*.html" \
+            --cache-control "public, max-age=0, must-revalidate"
