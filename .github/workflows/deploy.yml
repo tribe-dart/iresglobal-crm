@@ -70,6 +70,17 @@ jobs:
           scp -i ~/.ssh/id_rsa backend/package.json backend/package-lock.json ubuntu@${{ secrets.EC2_HOST }}:~/ires-crm-backend/
           scp -i ~/.ssh/id_rsa -r backend/dist ubuntu@${{ secrets.EC2_HOST }}:~/ires-crm-backend/
 
+      - name: Set Resend key on EC2
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ]; then
+            echo "RESEND_API_KEY secret is not set"
+            exit 1
+          fi
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "touch ~/ires-crm-backend/.env && grep -v '^RESEND_API_KEY=' ~/ires-crm-backend/.env > ~/ires-crm-backend/.env.mail || true"
+          printf 'RESEND_API_KEY=%s\n' "$RESEND_API_KEY" | ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "cat >> ~/ires-crm-backend/.env.mail && mv ~/ires-crm-backend/.env.mail ~/ires-crm-backend/.env"
+
       - name: Restart PM2 Service on EC2
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "

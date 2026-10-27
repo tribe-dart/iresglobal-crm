@@ -15,6 +15,7 @@ import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { docClient, s3Client, TABLES, BUCKETS } from "./aws";
 import { Contact, Quote, DiscoveryQuestionnaire, StageType } from "./types";
+import { notifyNewLead, notifyQuote } from "./mail";
 
 dotenv.config();
 
@@ -136,6 +137,7 @@ app.post("/api/contacts", async (req: Request, res: Response) => {
     });
 
     await docClient.send(command);
+    await notifyNewLead(newContact);
     res.status(201).json({ success: true, contact: newContact });
   } catch (error: any) {
     console.error("Error creating contact:", error);
@@ -328,6 +330,7 @@ app.post("/api/integrations/meta-lead", async (req: Request, res: Response) => {
     };
 
     await docClient.send(new PutCommand({ TableName: TABLES.CONTACTS, Item: contact }));
+    await notifyNewLead(contact);
     res.status(201).json({ success: true, message: "Meta lead ingested", contact });
   } catch (error: any) {
     console.error("Meta integration error:", error);
@@ -366,6 +369,7 @@ app.post("/api/integrations/google-form", async (req: Request, res: Response) =>
     };
 
     await docClient.send(new PutCommand({ TableName: TABLES.CONTACTS, Item: contact }));
+    await notifyNewLead(contact);
     res.status(201).json({ success: true, message: "Google Form lead ingested", contact });
   } catch (error: any) {
     console.error("Google Forms integration error:", error);
@@ -433,6 +437,7 @@ app.post("/api/discovery/submit", async (req: Request, res: Response) => {
     };
 
     await docClient.send(new PutCommand({ TableName: TABLES.CONTACTS, Item: contactRecord }));
+    await notifyNewLead(contactRecord);
 
     res.status(201).json({
       success: true,
@@ -527,6 +532,32 @@ app.post("/api/quotes", async (req: Request, res: Response) => {
     };
 
     await docClient.send(new PutCommand({ TableName: TABLES.QUOTES, Item: quote }));
+
+    let recipientName = clientName || "";
+    let recipientEmail = email || "";
+    let recipientPhone = phone || "";
+    if (targetContactId && targetContactId !== "unassigned" && !recipientEmail) {
+      const current = await docClient.send(
+        new GetCommand({ TableName: TABLES.CONTACTS, Key: { id: targetContactId } })
+      );
+      const linked = current.Item as Contact | undefined;
+      if (linked) {
+        recipientName = recipientName || linked.name;
+        recipientEmail = linked.email;
+        recipientPhone = recipientPhone || linked.phone || "";
+      }
+    }
+
+    await notifyQuote({
+      name: recipientName,
+      email: recipientEmail,
+      phone: recipientPhone,
+      projectType,
+      floorAreaSqM: Number(floorAreaSqM),
+      estimatedCost,
+      currency,
+      specificationDetails: quote.specificationDetails,
+    });
 
     res.status(201).json({ success: true, quote });
   } catch (error: any) {
