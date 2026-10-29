@@ -3,7 +3,7 @@ import { promisify } from "util";
 import { Request, Response, NextFunction } from "express";
 import { GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient, TABLES } from "./aws";
-import { sendAccountEmail } from "./mail";
+import { sendAccountConfirmation } from "./mail";
 
 const scryptAsync = promisify(scrypt);
 const COOKIE = "ires_session";
@@ -114,20 +114,11 @@ async function issueConfirmation(user: { email: string; name: string }): Promise
       ":now": new Date().toISOString(),
     },
   }));
-  return sendAccountEmail(
-    user.email,
-    "Confirm your IRES account",
-    [
-      `Hello ${user.name},`,
-      "",
-      "Confirm your email to finish creating your IRES account.",
-      `${CONFIRM_PAGE}?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`,
-      "",
-      "This link expires in 24 hours. After you confirm, you can open the CRM or stay on the website.",
-      "",
-      "IRES",
-    ].join("\n")
-  );
+  return sendAccountConfirmation({
+    email: user.email,
+    name: user.name,
+    confirmUrl: `${CONFIRM_PAGE}?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`,
+  });
 }
 
 const OPEN = new Set([
