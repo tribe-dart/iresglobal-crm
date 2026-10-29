@@ -308,7 +308,7 @@ export default function CRMApp() {
         <form onSubmit={handleLogin} className="w-full max-w-sm space-y-4 rounded-lg border border-(--color-line) bg-(--color-surface) p-6 shadow-sm">
           <div>
             <h1 className="text-lg font-extrabold text-(--color-text)">Sign in to IRES</h1>
-            <p className="mt-1 text-xs text-(--color-muted)">Use the same account you created on iresglobal.com.</p>
+            <p className="mt-1 text-xs text-(--color-muted)">Staff sign in for the IRES CRM.</p>
           </div>
           <input
             type="email"
@@ -334,9 +334,6 @@ export default function CRMApp() {
           >
             {loginBusy ? "Signing in…" : "Sign in"}
           </button>
-          <a href="https://iresglobal.com/account.html" className="block text-center text-xs text-(--color-accent) hover:underline">
-            Create an account
-          </a>
         </form>
       </div>
     );

@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, scrypt, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 import { Request, Response, NextFunction } from "express";
-import { GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient, TABLES } from "./aws";
 import { sendAccountConfirmation } from "./mail";
 
@@ -69,12 +69,6 @@ export function sessionCookie(token: string, clear = false): string {
     "Domain=.iresglobal.com",
     clear ? "Max-Age=0" : "Max-Age=1209600",
   ].join("; ");
-}
-
-async function hashPassword(password: string): Promise<{ salt: string; hash: string }> {
-  const salt = randomBytes(16).toString("hex");
-  const hash = ((await scryptAsync(password, salt, 32)) as Buffer).toString("hex");
-  return { salt, hash };
 }
 
 async function checkPassword(password: string, salt: string, hash: string): Promise<boolean> {
@@ -149,66 +143,8 @@ export function requireAccount(req: Request, res: Response, next: NextFunction):
 }
 
 export function registerAuth(app: import("express").Express): void {
-  app.post("/api/auth/signup", async (req, res) => {
-    try {
-      if (!secret()) {
-        res.status(500).json({ success: false, error: "Accounts are not ready yet." });
-        return;
-      }
-      const name = String(req.body.name || "").trim().slice(0, 120);
-      const email = cleanEmail(req.body.email);
-      const password = String(req.body.password || "");
-      if (!name || !validEmail(email) || password.length < 8) {
-        res.status(400).json({ success: false, error: "Enter your name, a real email, and a password of at least 8 characters." });
-        return;
-      }
-
-      const existing = await getUser(email);
-      if (existing?.confirmed) {
-        res.status(409).json({ success: false, error: "That email already has an account. Log in." });
-        return;
-      }
-
-      const now = new Date().toISOString();
-      const passwordRecord = await hashPassword(password);
-      if (!existing) {
-        await docClient.send(new PutCommand({
-          TableName: TABLES.USERS,
-          Item: {
-            email,
-            name,
-            passwordSalt: passwordRecord.salt,
-            passwordHash: passwordRecord.hash,
-            confirmed: false,
-            createdAt: now,
-            updatedAt: now,
-          },
-        }));
-      } else {
-        await docClient.send(new UpdateCommand({
-          TableName: TABLES.USERS,
-          Key: { email },
-          UpdateExpression: "SET #name = :name, passwordSalt = :salt, passwordHash = :hash, updatedAt = :now",
-          ExpressionAttributeNames: { "#name": "name" },
-          ExpressionAttributeValues: {
-            ":name": name,
-            ":salt": passwordRecord.salt,
-            ":hash": passwordRecord.hash,
-            ":now": now,
-          },
-        }));
-      }
-
-      const sent = await issueConfirmation({ email, name });
-      if (!sent) {
-        res.status(502).json({ success: false, error: "We could not send the confirmation email. Try again shortly." });
-        return;
-      }
-      res.status(201).json({ success: true });
-    } catch (error) {
-      console.error("signup", error instanceof Error ? error.name : "failed");
-      res.status(500).json({ success: false, error: "We could not create that account." });
-    }
+  app.post("/api/auth/signup", async (_req, res) => {
+    res.status(403).json({ success: false, error: "Accounts are not open for signup." });
   });
 
   app.post("/api/auth/confirm", async (req, res) => {
