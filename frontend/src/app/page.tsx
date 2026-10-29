@@ -21,7 +21,9 @@ import {
   Layers,
   Sparkles,
   Calendar,
+  BookOpen,
 } from "lucide-react";
+import HowTo from "@/components/HowTo";
 import { Contact, Quote, StageType } from "@/types";
 import {
   fetchContacts,
@@ -56,7 +58,7 @@ export default function CRMApp() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
-  const [activeTab, setActiveTab] = useState<"pipeline" | "contacts" | "quotes" | "discovery">("pipeline");
+  const [activeTab, setActiveTab] = useState<"pipeline" | "contacts" | "quotes" | "discovery" | "guide">("pipeline");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -412,6 +414,18 @@ export default function CRMApp() {
               <Compass className="w-4 h-4" />
               Discovery Intake Form
             </button>
+
+            <button
+              onClick={() => setActiveTab("guide")}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded text-xs font-semibold tracking-wide transition-all ${
+                activeTab === "guide"
+                  ? "bg-(--color-accent) text-white shadow-sm"
+                  : "text-(--color-text) hover:bg-(--color-bg) hover:text-(--color-accent)"
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              How to use
+            </button>
           </nav>
 
           {/* Core Values Badge */}
@@ -467,6 +481,7 @@ export default function CRMApp() {
               {activeTab === "contacts" && "Client Contact Repository"}
               {activeTab === "quotes" && "Rammed Earth Quotation Calculator & Blueprints"}
               {activeTab === "discovery" && "Branded Discovery Questionnaire (Earth Becomes Home)"}
+              {activeTab === "guide" && "How to use the CRM"}
             </h2>
             <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-bold bg-(--color-accent)/10 text-(--color-accent) border border-(--color-accent)/20">
               IRES GLOBAL
@@ -1021,6 +1036,8 @@ export default function CRMApp() {
               </div>
             </div>
           )}
+
+          {activeTab === "guide" && <HowTo />}
 
           {/* TAB 4: DISCOVERY INTAKE QUESTIONNAIRE */}
           {activeTab === "discovery" && (
