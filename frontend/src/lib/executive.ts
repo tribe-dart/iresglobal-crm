@@ -288,7 +288,9 @@ export function groupDeals(deals: Deal[], key: (deal: Deal) => string) {
   return groups;
 }
 
+export const iresCrmHome = (process.env.NEXT_PUBLIC_IRES_CRM_ORIGIN || "").replace(/\/$/, "") + "/";
+
 export function sourceRecord(deal: Deal) {
   const id = encodeURIComponent(deal.id);
-  return deal.source === "matryvo" ? "https://crm.matryvo.com/?opportunity=" + id : "/?contact=" + id;
+  return deal.source === "matryvo" ? "https://crm.matryvo.com/?opportunity=" + id : iresCrmHome + "?contact=" + id;
 }

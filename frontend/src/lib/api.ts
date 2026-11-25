@@ -55,7 +55,8 @@ export async function loginAccount(email: string, password: string): Promise<Acc
 }
 
 export async function logoutAccount(): Promise<void> {
-  await request("/api/auth/logout", { method: "POST" });
+  const response = await request("/api/auth/logout", { method: "POST" });
+  if (!response.ok) throw new Error("Could not sign out.");
 }
 
 export async function fetchContacts(brand?: string, stage?: string): Promise<Contact[]> {

@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
-import { fetchExecutive, loginAccount } from "@/lib/api";
+import { fetchExecutive, loginAccount, logoutAccount } from "@/lib/api";
 import {
-  buildWorkspace, emptyFilters, periodFor, quarterFor, quarters, sourceNames, workspaceDeals,
+  buildWorkspace, emptyFilters, iresCrmHome, periodFor, quarterFor, quarters, sourceNames, workspaceDeals,
   type DealFilter, type ExecutiveSnapshot, type Filters, type Scenario,
 } from "@/lib/executive";
 import { dateLabel, Drawer, type Drill } from "./components";
@@ -70,14 +70,28 @@ function FeedStatus({ label, at, asOf, refreshFailed }: {
   </div>;
 }
 
-function Dashboard({ snapshot, refresh, refreshing, refreshFailed }: {
+function Dashboard({ snapshot, refresh, refreshing, refreshFailed, signOut }: {
   snapshot: ExecutiveSnapshot; refresh: () => void; refreshing: boolean; refreshFailed?: boolean;
+  signOut: () => Promise<void>;
 }) {
   const section = useSyncExternalStore(listenForNavigation, getSection, initialSection);
   const active = sections.find((item) => item.id === section) ?? sections[0];
   const [filters, setFilters] = useState(() => savedFilters(snapshot));
   const [scenario, setScenario] = useState<Scenario>("Base case");
   const [drill, setDrill] = useState<Drill | null>(null);
+  const [signOutError, setSignOutError] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setSignOutError(false);
+    setSigningOut(true);
+    try {
+      await signOut();
+    } catch {
+      setSignOutError(true);
+      setSigningOut(false);
+    }
+  }
   const deals = useMemo(() => workspaceDeals(snapshot), [snapshot]);
   const model = useMemo(() => buildWorkspace(snapshot, deals, filters), [snapshot, deals, filters]);
   const hasFilters = filters.source !== "all" || filters.quarter !== quarterFor(new Date(snapshot.asOf)) ||
@@ -108,7 +122,10 @@ function Dashboard({ snapshot, refresh, refreshing, refreshFailed }: {
         <FeedStatus label="Matryvo" at={snapshot.matryvo.syncedAt} asOf={snapshot.asOf} refreshFailed={refreshFailed} />
         <FeedStatus label="Ires Global contacts" at={snapshot.iresContacts.syncedAt} asOf={snapshot.asOf} refreshFailed={refreshFailed} />
         <FeedStatus label="Ires Global quotes" at={snapshot.iresQuotes.syncedAt} asOf={snapshot.asOf} refreshFailed={refreshFailed} />
-        <Link className="ex-return" href="/"><ArrowLeft size={14} /> Return to Ires Global CRM</Link>
+        <Link className="ex-return" href={iresCrmHome}><ArrowLeft size={14} /> Return to Ires Global CRM</Link>
+        <button className="ex-return" type="button" disabled={refreshing || signingOut}
+          onClick={() => void handleSignOut()}><LogOut size={14} /> {signingOut ? "Signing out…" : "Sign out"}</button>
+        {signOutError && <small role="alert">Could not sign out. Try again.</small>}
       </div>
     </aside>
 
@@ -118,7 +135,7 @@ function Dashboard({ snapshot, refresh, refreshing, refreshFailed }: {
           <p className="ex-overline">Workspace <span>/</span> Executive analytics</p>
           <div className="ex-header-meta">
             <span>{periodFor(filters.quarter).label} <i /> USD <i /> As of {dateLabel(snapshot.asOf)}</span>
-            <button className="ex-control ex-refresh" onClick={refresh} disabled={refreshing}>
+            <button className="ex-control ex-refresh" onClick={refresh} disabled={refreshing || signingOut}>
               <RefreshCw size={14} aria-hidden="true" /> {refreshing ? "Refreshing…" : "Refresh"}
             </button>
           </div>
@@ -234,12 +251,16 @@ export default function ExecutiveWorkspace() {
   }, [revision]);
 
   if (access.state === "ready") {
-    return <Dashboard snapshot={access.data} refresh={refresh} refreshing={refreshing} refreshFailed={access.refreshFailed} />;
+    return <Dashboard snapshot={access.data} refresh={refresh} refreshing={refreshing} refreshFailed={access.refreshFailed}
+      signOut={async () => {
+        await logoutAccount();
+        setAccess({ state: "sign-in" });
+      }} />;
   }
 
   return <div className="ex-shell ex-access">
     <aside className="ex-sidebar"><WorkspaceBrand />
-      <Link className="ex-return" href="/"><ArrowLeft size={14} /> Return to Ires Global CRM</Link>
+      <Link className="ex-return" href={iresCrmHome}><ArrowLeft size={14} /> Return to Ires Global CRM</Link>
     </aside>
     <main className="ex-gate">
       <div className="ex-gate-card">

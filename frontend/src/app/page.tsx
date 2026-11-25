@@ -387,7 +387,7 @@ export default function CRMApp() {
           {/* Navigation Links */}
           <nav className="space-y-1.5">
             {account?.canAccessExecutive && (
-              <Link href="/executive/" className="w-full flex items-center gap-3 px-3 py-2.5 rounded text-xs font-semibold tracking-wide text-(--color-text) hover:bg-(--color-bg) hover:text-(--color-accent)">
+              <Link href="https://master.innovativeelectivegroup.com/" className="w-full flex items-center gap-3 px-3 py-2.5 rounded text-xs font-semibold tracking-wide text-(--color-text) hover:bg-(--color-bg) hover:text-(--color-accent)">
                 <ChartNoAxesCombined className="w-4 h-4" />
                 Executive workspace
               </Link>
