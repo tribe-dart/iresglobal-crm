@@ -6,9 +6,7 @@ Enterprise CRM and internal client pipeline for **Ires Global** ("Earth becomes 
 
 ## Executive workspace
 
-The standalone master view has its own static release at `https://master.innovativeelectivegroup.com/`. It authenticates against the existing Ires Global account and uses a session scoped to the master hostname. The Ires Global backend returns approved users a read-only snapshot with Matryvo opportunities and Ires Global contacts and quotes. Existing links to `https://crm.iresglobal.com/executive/` permanently redirect to the standalone workspace.
-
-Build the standalone release with `npm run build:executive --prefix frontend`. Its public files are in `frontend/out-executive/`. The dedicated GitHub workflow publishes each release to `/var/www/crm-executive` on the existing AWS host. The loopback Nginx site in `deploy/executive/nginx.conf` serves the dashboard and proxies the executive data, sign-in, and sign-out routes. Cloudflare Tunnel connects the public hostname to that site.
+The Executive Workspace frontend and deployment workflow live in a separate repository. This CRM serves the authenticated executive snapshot and redirects bookmarks from its old `/executive/` URL to the standalone site. [Workspace repository](https://github.com/tribe-dart/executive-workspace) · [Live workspace](https://master.innovativeelectivegroup.com/)
 
 Configure these values in the backend service environments:
 
