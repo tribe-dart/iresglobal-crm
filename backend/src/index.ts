@@ -17,10 +17,12 @@ import { docClient, s3Client, TABLES, BUCKETS } from "./aws";
 import { Contact, Quote, DiscoveryQuestionnaire, StageType } from "./types";
 import { notifyNewLead, notifyQuote } from "./mail";
 import { registerAuth, requireAccount } from "./auth";
+import { getExecutiveWorkspace } from "./executive";
+import { scanAll } from "./scanAll";
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 const port = process.env.PORT || 5001;
 
 const allowedOrigins = new Set([
@@ -42,6 +44,7 @@ app.use(cors({
 app.use(express.json());
 registerAuth(app);
 app.use(requireAccount);
+app.get("/api/executive", getExecutiveWorkspace);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -68,12 +71,7 @@ app.get("/api/contacts", async (req: Request, res: Response) => {
   try {
     const { brand, stage } = req.query;
 
-    const command = new ScanCommand({
-      TableName: TABLES.CONTACTS,
-    });
-
-    const response = await docClient.send(command);
-    let items = (response.Items || []) as Contact[];
+    let items = await scanAll<Contact>({ TableName: TABLES.CONTACTS });
 
     if (brand && brand !== "all") {
       items = items.filter((c) => c.brand === brand);
@@ -588,9 +586,7 @@ app.post("/api/quotes", async (req: Request, res: Response) => {
 app.get("/api/quotes", async (req: Request, res: Response) => {
   try {
     const { contactId } = req.query;
-    const command = new ScanCommand({ TableName: TABLES.QUOTES });
-    const result = await docClient.send(command);
-    let items = (result.Items || []) as Quote[];
+    let items = await scanAll<Quote>({ TableName: TABLES.QUOTES });
 
     if (contactId) {
       items = items.filter((q) => q.contactId === contactId);
@@ -684,6 +680,8 @@ app.get("/api/export/csv", async (req: Request, res: Response) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Ires Global CRM Backend API running on port ${port}`);
-});
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Ires Global CRM Backend API running on port ${port}`);
+  });
+}

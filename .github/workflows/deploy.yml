@@ -79,8 +79,19 @@ jobs:
             echo "RESEND_API_KEY or AUTH_SECRET secret is not set"
             exit 1
           fi
-          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "touch ~/ires-crm-backend/.env && grep -v -e '^RESEND_API_KEY=' -e '^AUTH_SECRET=' ~/ires-crm-backend/.env > ~/ires-crm-backend/.env.mail || true"
-          printf 'RESEND_API_KEY=%s\nAUTH_SECRET=%s\n' "$RESEND_API_KEY" "$AUTH_SECRET" | ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "cat >> ~/ires-crm-backend/.env.mail && mv ~/ires-crm-backend/.env.mail ~/ires-crm-backend/.env"
+          printf 'RESEND_API_KEY=%s\nAUTH_SECRET=%s\n' "$RESEND_API_KEY" "$AUTH_SECRET" |
+            ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} '
+              set -eu
+              umask 077
+              cd "$HOME/ires-crm-backend"
+              touch .env
+              pending=$(mktemp .env.deploy.XXXXXX)
+              trap "rm -f -- $pending" EXIT
+              sed -e "/^RESEND_API_KEY=/d" -e "/^AUTH_SECRET=/d" .env > "$pending"
+              printf '\n' >> "$pending"
+              cat >> "$pending"
+              mv "$pending" .env
+            '
 
       - name: Restart PM2 Service on EC2
         run: |
@@ -130,10 +141,13 @@ jobs:
 
       - name: Sync to S3 website bucket
         run: |
-          aws s3 sync frontend/out s3://crm.iresglobal.com --delete \
-            --exclude "*.html" \
+          aws s3 sync frontend/out/_next/static/ s3://crm.iresglobal.com/_next/static/ \
             --cache-control "public, max-age=31536000, immutable"
-          aws s3 sync frontend/out s3://crm.iresglobal.com \
+          aws s3 sync frontend/out s3://crm.iresglobal.com --delete \
+            --exclude "_next/static/*" \
+            --exclude "*.html" \
+            --cache-control "public, max-age=0, must-revalidate"
+          aws s3 cp frontend/out s3://crm.iresglobal.com --recursive \
             --exclude "*" \
             --include "*.html" \
             --cache-control "public, max-age=0, must-revalidate"

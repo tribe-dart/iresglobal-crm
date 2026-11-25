@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Users,
   PieChart,
@@ -22,6 +23,7 @@ import {
   Sparkles,
   Calendar,
   BookOpen,
+  ChartNoAxesCombined,
 } from "lucide-react";
 import HowTo from "@/components/HowTo";
 import { Contact, Quote, StageType } from "@/types";
@@ -49,6 +51,11 @@ const STAGE_LABELS: Record<StageType, { label: string; desc: string }> = {
   "75%": { label: "75% Proposal", desc: "Rammed earth quote & blueprints" },
   "100%": { label: "100% Closed", desc: "Contract executed & groundbreaking" },
 };
+
+function contactFromLink(contacts: Contact[]) {
+  const id = new URLSearchParams(window.location.search).get("contact");
+  return id ? contacts.find((contact) => contact.id === id) : undefined;
+}
 
 export default function CRMApp() {
   const [isDark, setIsDark] = useState(false);
@@ -119,13 +126,19 @@ export default function CRMApp() {
   }, [isDark]);
 
   // Load data
-  const loadData = React.useCallback(async (showLoading = false) => {
+  const loadData = React.useCallback(async (showLoading = false, followLink = false) => {
     try {
       if (showLoading) setLoading(true);
       const [cData, qData] = await Promise.all([fetchContacts("ires"), fetchQuotes()]);
       setContacts(cData);
       setQuotes(qData);
+      const linkedContact = followLink ? contactFromLink(cData) : undefined;
+      if (linkedContact) {
+        setActiveTab("contacts");
+        setSearchQuery(linkedContact.name);
+      }
       setSelectedContact((prev) => {
+        if (linkedContact) return linkedContact;
         if (!prev) return null;
         return cData.find((c) => c.id === prev.id) || prev;
       });
@@ -147,6 +160,12 @@ export default function CRMApp() {
         if (!active) return;
         setContacts(cData);
         setQuotes(qData);
+        const linkedContact = contactFromLink(cData);
+        if (linkedContact) {
+          setActiveTab("contacts");
+          setSearchQuery(linkedContact.name);
+          setSelectedContact(linkedContact);
+        }
       })
       .catch((err) => console.error("Initial load error:", err))
       .finally(() => {
@@ -284,7 +303,7 @@ export default function CRMApp() {
       const user = await loginAccount(loginEmail, loginPassword);
       setAccount(user);
       setLoading(true);
-      await loadData(true);
+      await loadData(true, true);
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : "Could not sign in.");
     } finally {
@@ -367,6 +386,12 @@ export default function CRMApp() {
 
           {/* Navigation Links */}
           <nav className="space-y-1.5">
+            {account?.canAccessExecutive && (
+              <Link href="/executive/" className="w-full flex items-center gap-3 px-3 py-2.5 rounded text-xs font-semibold tracking-wide text-(--color-text) hover:bg-(--color-bg) hover:text-(--color-accent)">
+                <ChartNoAxesCombined className="w-4 h-4" />
+                Executive workspace
+              </Link>
+            )}
             <button
               onClick={() => setActiveTab("pipeline")}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded text-xs font-semibold tracking-wide transition-all ${

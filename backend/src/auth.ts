@@ -52,6 +52,24 @@ export function readSession(token: string): SessionUser | null {
   }
 }
 
+function canAccessExecutive(user: SessionUser): boolean {
+  return (process.env.EXECUTIVE_ACCOUNT_EMAILS || "").split(",")
+    .some((email) => email.trim().toLowerCase() === user.email.toLowerCase());
+}
+
+export function requireExecutiveAccount(req: Request, res: Response): boolean {
+  const user = readSession(tokenFromRequest(req));
+  if (!user) {
+    res.status(401).json({ error: "Sign in required." });
+    return false;
+  }
+  if (!canAccessExecutive(user)) {
+    res.status(403).json({ error: "Executive access required." });
+    return false;
+  }
+  return true;
+}
+
 function tokenFromRequest(req: Request): string {
   const raw = req.headers.cookie || "";
   const part = raw.split(";").map((item) => item.trim()).find((item) => item.startsWith(`${COOKIE}=`));
@@ -201,8 +219,9 @@ export function registerAuth(app: import("express").Express): void {
         res.status(403).json({ success: false, error: "Confirm your email first. We sent a new link." });
         return;
       }
-      res.setHeader("Set-Cookie", sessionCookie(signSession({ email: user.email, name: user.name })));
-      res.json({ success: true, user: { email: user.email, name: user.name } });
+      const account = { email: user.email, name: user.name };
+      res.setHeader("Set-Cookie", sessionCookie(signSession(account)));
+      res.json({ success: true, user: { ...account, canAccessExecutive: canAccessExecutive(account) } });
     } catch (error) {
       console.error("login", error instanceof Error ? error.name : "failed");
       res.status(500).json({ success: false, error: "We could not sign you in." });
@@ -220,6 +239,6 @@ export function registerAuth(app: import("express").Express): void {
       res.status(401).json({ success: false, error: "Sign in required." });
       return;
     }
-    res.json({ success: true, user });
+    res.json({ success: true, user: { ...user, canAccessExecutive: canAccessExecutive(user) } });
   });
 }

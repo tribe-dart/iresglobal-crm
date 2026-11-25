@@ -7,9 +7,11 @@ import {
   DiscoveryResponse,
 } from "@/types";
 
+import type { ExecutiveSnapshot } from "@/lib/executive";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://52.18.201.50:5002";
 
-export type Account = { email: string; name: string };
+export type Account = { email: string; name: string; canAccessExecutive?: boolean };
 
 function request(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
@@ -22,6 +24,17 @@ function request(path: string, init: RequestInit = {}) {
     credentials: "include",
     cache: "no-store",
   });
+}
+
+export async function fetchExecutive(signal: AbortSignal): Promise<
+  { state: "sign-in" | "forbidden" } | { state: "ready"; data: ExecutiveSnapshot }
+> {
+  const res = await request("/api/executive", { signal });
+  if (res.status === 401) return { state: "sign-in" };
+  if (res.status === 403) return { state: "forbidden" };
+  if (!res.ok) throw new Error("Executive workspace unavailable.");
+  const data: ExecutiveSnapshot = await res.json();
+  return { state: "ready", data };
 }
 
 export async function fetchMe(): Promise<Account | null> {

@@ -4,6 +4,23 @@ Enterprise CRM and internal client pipeline for **Ires Global** ("Earth becomes 
 
 ---
 
+## Executive workspace
+
+The master view is served at `/executive/` by the Ires Global CRM frontend. The browser signs in with the existing Ires Global session. The Ires Global backend returns approved users a read-only snapshot with Matryvo opportunities and Ires Global contacts and quotes.
+
+Configure these values in the backend service environments:
+
+| Setting | Backend | Value |
+| --- | --- | --- |
+| `EXECUTIVE_ACCOUNT_EMAILS` | Ires Global | Comma-separated sign-in emails approved to see both CRMs. Empty disables access. |
+| `EXECUTIVE_MATRYVO_API_KEY` | Both | The same dedicated random secret in each service environment. It authorizes only the Matryvo executive opportunity feed. |
+| `MATRYVO_EXECUTIVE_API_ORIGIN` | Ires Global | Optional. Defaults to `https://api-crm.matryvo.com`. |
+| `EXECUTIVE_BOOKINGS_TARGETS_USD` | Ires Global | Optional JSON object keyed by calendar quarter, such as `{"2026-Q4":3100000}`. Set actual approved targets. |
+
+Deploy the Matryvo backend before the Ires Global backend and frontend. The existing deploy jobs preserve these settings in the services’ EC2 `.env` files. The executive secret belongs only in the backend environments.
+
+Financial figures use USD. Matryvo bookings use recorded close transitions. Ires Global quote estimates are shown alongside opportunity values and are excluded from bookings and forecast totals. Finance actuals, rep quotas, executive sponsorship, and historical snapshot metrics appear as unavailable pending the corresponding data sources.
+
 ## 🌐 Live Deployments
 
 - **Production Custom Domains (Cloudflare SSL)**:
