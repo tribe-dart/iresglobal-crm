@@ -34,6 +34,7 @@ jobs:
               - 'backend/**'
             frontend:
               - 'frontend/**'
+              - '.github/workflows/deploy.yml'
 
   deploy-backend:
     name: Deploy Backend to EC2
@@ -150,4 +151,8 @@ jobs:
           aws s3 cp frontend/out s3://crm.iresglobal.com --recursive \
             --exclude "*" \
             --include "*.html" \
+            --exclude "executive/index.html" \
+            --cache-control "public, max-age=0, must-revalidate"
+          aws s3 cp frontend/out/executive/index.html s3://crm.iresglobal.com/executive/index.html \
+            --website-redirect "https://master.innovativeelectivegroup.com/executive/" \
             --cache-control "public, max-age=0, must-revalidate"
